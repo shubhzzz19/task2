@@ -233,11 +233,21 @@ Resources:
         # Run the MySQL command to add backends
         mysql -h 127.0.0.1 -P 9030 -uroot -p"" -e "ALTER SYSTEM ADD BACKEND $BE_IPS;"
         echo "ALTER SYSTEM command executed."  
+        # Clone your GitHub repo of metric-collector
+        cd 
+        git clone https://github.com/shubhzzz19/task2.git
+        # Change directory to the cloned repo
+        cd task2/metrics-collector
         # Read IPs into array for exporting individual BE variables with port 8040
-        readarray -t IPS < <(aws ec2 describe-instances --region ap-south-1 --filters "Name=tag:Name,Values=StarRocksBE1,StarRocksBE2,StarRocksBE3"  "Name=instance-state-name,Values=running" --query 'Reservations[*].Instances[*].PrivateIpAddress'  --output text)
-        export BE1="${IPS[0]}:8040"
-        export BE2="${IPS[1]}:8040"
-        export BE3="${IPS[2]}:8040"
+        IPS=($(aws ec2 describe-instances --region ap-south-1 --filters "Name=tag:Name,Values=StarRocksBE1,StarRocksBE2,StarRocksBE3" "Name=instance-state-name,Values=running" --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text))
+        cat << EOF > be_nodes.env
+            BE1=${IPS[0]}:8040
+            BE2=${IPS[1]}:8040
+            BE3=${IPS[2]}:8040
+        EOF
+        # Build and run the docker-compose containers in detached mode
+        docker-compose up -d --build
+
   BEInstance1:
     Condition: IsMumbaiRegion
     Type: AWS::EC2::Instance
