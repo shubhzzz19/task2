@@ -1,188 +1,25 @@
-# api/main.py
-from fastapi import FastAPI, HTTPException
-from datetime import datetime, timedelta
-from typing import List, Dict
-import psutil
-import requests
-import statistics
-from collections import deque
-import logging
-import os
-from redis import Redis
-import json
-app = FastAPI()
-
-# Configuration
-STARROCKS_FE = os.getenv("STARROCKS_FE", "http://localhost:8030")
-STARROCKS_BE_NODES = [
-    os.getenv("BE1", "be1:8040"),
-    os.getenv("BE2", "be2:8040"), 
-    os.getenv("BE3", "be3:8040")
-]
-
-# In-memory storage (for demo - would use Redis in production)
-metrics_store = {
-    "documentdb": {
-        "inserts": deque(maxlen=10000),
-        "latencies": deque(maxlen=10000)
-    },
-    "starrocks": {
-        "queries": deque(maxlen=10000)
-    }
-}
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-# Add to configuration section
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-
-# Add to metrics_store initialization
-metrics_store["redis"] = {
-    "commands": deque(maxlen=10000),
-    "latencies": deque(maxlen=10000)
-}
-
-@app.post("/track/redis/command")
-async def track_redis_command(command: str, latency_ms: float):
-    """Track Redis command metrics"""
-    metrics_store["redis"]["latencies"].append(latency_ms)
-    metrics_store["redis"]["commands"].append({
-        "timestamp": datetime.utcnow(),
-        "command": command,
-        "latency": latency_ms
-    })
-    return {"status": "success"}
-
-@app.get("/metrics/redis/status")
-async def get_redis_metrics():
-    """Get Redis server metrics"""
-    try:
-        redis = Redis(host=REDIS_HOST, port=REDIS_PORT)
-        info = redis.info()
-        return {
-            "memory_used": info['used_memory'],
-            "ops_per_sec": info['instantaneous_ops_per_sec'],
-            "connected_clients": info['connected_clients'],
-            "command_stats": info.get('commandstats', {})
+{
+    "title": "StarRocks Cluster Monitoring",
+    "panels": [
+        {
+        "title": "Node Resources",
+        "type": "graph",
+        "targets": [
+            {
+            "expr": "nodes{node=~'fe|be.*'}.cpu",
+            "legendFormat": "{{node}} CPU"
+            }
+        ]
+        },
+        {
+        "title": "DocumentDB Insert Latency",
+        "type": "stat",
+        "targets": [
+            {
+            "expr": "documentdb_summary.p99",
+            "legendFormat": "P99 Latency"
+            }
+        ]
         }
-    except Exception as e:
-        raise HTTPException(500, f"Redis connection failed: {str(e)}")
-
-@app.get("/metrics/redis/summary")
-async def get_redis_summary():
-    """Get Redis command percentiles"""
-    latencies = list(metrics_store["redis"]["latencies"])
-    if not latencies:
-        return {"p50": 0, "p75": 0, "p90": 0, "p99": 0}
-    
-    latencies_sorted = sorted(latencies)
-    n = len(latencies_sorted)
-    return {
-        "p50": latencies_sorted[int(n * 0.5)],
-        "p75": latencies_sorted[int(n * 0.75)],
-        "p90": latencies_sorted[int(n * 0.9)],
-        "p99": latencies_sorted[int(n * 0.99)]
-    }
-@app.get("/metrics/starrocks/nodes")
-async def get_node_metrics():
-    """Get CPU/Memory for all nodes"""
-    nodes = []
-    
-    # FE metrics
-    try:
-        fe_cpu = psutil.cpu_percent()
-        fe_mem = psutil.virtual_memory().percent
-        nodes.append({
-            "node": "fe",
-            "cpu": fe_cpu,
-            "memory": fe_mem
-        })
-    except Exception as e:
-        nodes.append({"node": "fe", "error": str(e)})
-    
-    # BE metrics
-    for i, be in enumerate(STARROCKS_BE_NODES, 1):
-        try:
-            response = requests.get(f"http://{be}/metrics", timeout=2)
-            be_data = response.json()
-            nodes.append({
-                "node": f"be{i}",
-                "cpu": be_data.get("cpu", 0),
-                "memory": be_data.get("memory", 0)
-            })
-        except Exception as e:
-            nodes.append({"node": f"be{i}", "error": str(e)})
-    
-    return {"nodes": nodes}
-
-@app.get("/metrics/starrocks/queries/slowest")
-async def get_slow_queries(limit: int = 100):
-    """Get slowest queries from FE"""
-    try:
-        response = requests.get(f"{STARROCKS_FE}/api/slow_queries?limit={limit}")
-        return response.json()
-    except Exception as e:
-        raise HTTPException(500, f"Failed to get slow queries: {str(e)}")
-
-@app.post("/track/documentdb/insert")
-async def track_insert(latency_ms: float):
-    """Track DocumentDB insert metrics"""
-    metrics_store["documentdb"]["latencies"].append(latency_ms)
-    metrics_store["documentdb"]["inserts"].append({
-        "timestamp": datetime.utcnow(),
-        "latency": latency_ms
-    })
-    return {"status": "success"}
-
-@app.get("/metrics/documentdb/summary")
-async def get_documentdb_summary():
-    """Get DocumentDB insert metrics and percentiles"""
-    latencies = list(metrics_store["documentdb"]["latencies"])
-    
-    if not latencies:
-        return {
-            "inserts_last_min": 0,
-            "inserts_last_sec": 0,
-            "p50": 0, "p75": 0, "p90": 0, "p99": 0
-        }
-    
-    # Calculate percentiles
-    latencies_sorted = sorted(latencies)
-    n = len(latencies_sorted)
-    percentiles = {
-        "p50": latencies_sorted[int(n * 0.5)],
-        "p75": latencies_sorted[int(n * 0.75)],
-        "p90": latencies_sorted[int(n * 0.9)],
-        "p99": latencies_sorted[int(n * 0.99)]
-    }
-    
-    # Count recent inserts
-    now = datetime.utcnow()
-    inserts = list(metrics_store["documentdb"]["inserts"])
-    
-    return {
-        "inserts_last_min": len([i for i in inserts if i["timestamp"] > now - timedelta(minutes=1)]),
-        "inserts_last_sec": len([i for i in inserts if i["timestamp"] > now - timedelta(seconds=1)]),
-        **percentiles
-    }
-
-@app.get("/metrics/starrocks/queries/percentiles")
-async def get_query_percentiles():
-    """Calculate query time percentiles"""
-    queries = list(metrics_store["starrocks"]["queries"])
-    if not queries:
-        return {"p50": 0, "p75": 0, "p90": 0, "p99": 0}
-    
-    durations = [q["duration"] for q in queries]
-    durations_sorted = sorted(durations)
-    n = len(durations_sorted)
-    
-    return {
-        "p50": durations_sorted[int(n * 0.5)],
-        "p75": durations_sorted[int(n * 0.75)],
-        "p90": durations_sorted[int(n * 0.9)],
-        "p99": durations_sorted[int(n * 0.99)]
-    }
+    ]
+}
