@@ -226,7 +226,7 @@ Resources:
         # Run the MySQL command to add backends
         mysql -h 127.0.0.1 -P 9030 -uroot -p"" -e "ALTER SYSTEM ADD BACKEND $BE_IPS;"
         # Clone your GitHub repo of metric-collector
-        git clone https://github.com/shubhzzz19/task2.git
+        sudo git clone https://github.com/shubhzzz19/task2.git
         # Change directory to the cloned repo
         cd task2/metrics-collector
         # Read IPs into array for exporting individual BE variables with port 8040
