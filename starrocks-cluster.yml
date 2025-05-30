@@ -235,6 +235,7 @@ Resources:
         echo "ALTER SYSTEM command executed."  
         # Clone your GitHub repo of metric-collector
         cd 
+        yum install -y git
         git clone https://github.com/shubhzzz19/task2.git
         # Change directory to the cloned repo
         cd task2/metrics-collector
