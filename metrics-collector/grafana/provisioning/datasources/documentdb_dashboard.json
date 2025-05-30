@@ -1,0 +1,63 @@
+{
+    "title": "DocumentDB Insert Monitoring",
+    "panels": [
+        {
+        "title": "Insert Latency Percentiles (ms)",
+        "type": "stat",
+        "targets": [
+            {
+            "expr": "documentdb_summary.p50",
+            "legendFormat": "P50 Latency"
+            },
+            {
+            "expr": "documentdb_summary.p75",
+            "legendFormat": "P75 Latency"
+            },
+            {
+            "expr": "documentdb_summary.p90",
+            "legendFormat": "P90 Latency"
+            },
+            {
+            "expr": "documentdb_summary.p99",
+            "legendFormat": "P99 Latency"
+            }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+        },
+        {
+        "title": "Insert Count Last 1 Minute",
+        "type": "stat",
+        "targets": [
+            {
+            "expr": "documentdb_summary.inserts_last_min",
+            "legendFormat": "Inserts Last Minute"
+            }
+        ],
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+        },
+        {
+        "title": "Insert Count Last 1 Second",
+        "type": "stat",
+        "targets": [
+            {
+            "expr": "documentdb_summary.inserts_last_sec",
+            "legendFormat": "Inserts Last Second"
+            }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+        },
+        {
+        "title": "Insert Latency Over Time",
+        "type": "graph",
+        "targets": [
+            {
+            "expr": "documentdb_inserts.latency",
+            "legendFormat": "Insert Latency"
+            }
+        ],
+        "gridPos": {"x": 0, "y": 4, "w": 18, "h": 8}
+        }
+    ],
+    "schemaVersion": 27,
+    "version": 1
+}

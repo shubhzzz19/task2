@@ -1,4 +1,3 @@
-# grafana/provisioning/datasources/fastapi.yml
 apiVersion: 1
 
 datasources:

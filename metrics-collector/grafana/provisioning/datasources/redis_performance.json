@@ -1,0 +1,30 @@
+{
+    "title": "Redis Performance",
+    "type": "row",
+    "panels": [
+        {
+        "title": "Redis Memory Usage",
+        "type": "gauge",
+        "targets": [
+            {
+            "expr": "redis_status.memory_used",
+            "legendFormat": "Memory Used"
+            }
+        ]
+        },
+        {
+        "title": "Redis Command Latency",
+        "type": "graph",
+        "targets": [
+            {
+            "expr": "redis_summary.p99",
+            "legendFormat": "P99 Latency"
+            },
+            {
+            "expr": "redis_summary.p50",
+            "legendFormat": "P50 Latency"
+            }
+        ]
+        }
+    ]
+}

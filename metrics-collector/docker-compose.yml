@@ -2,14 +2,29 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
   monitoring-api:
     build: ./api
     ports:
       - "8000:8000"
     environment:
       - STARROCKS_FE=http://localhost:8030
+      - REDIS_HOST=redis  # This matches the service name
+      - REDIS_PORT=6379
       - be_nodes.env
     restart: unless-stopped
+    depends_on:
+      - redis
 
   grafana:
     image: grafana/grafana
@@ -22,3 +37,6 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     depends_on:
       - monitoring-api
+
+volumes:
+  redis_data:
