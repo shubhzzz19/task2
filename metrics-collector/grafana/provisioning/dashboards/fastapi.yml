@@ -1,0 +1,9 @@
+# grafana/provisioning/datasources/fastapi.yml
+apiVersion: 1
+
+datasources:
+- name: FastAPI
+  type: grafana-simple-json-datasource
+  access: proxy
+  url: http://monitoring-api:8000
+  isDefault: true

@@ -1,0 +1,26 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  monitoring-api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    environment:
+      - STARROCKS_FE=http://starrocks-fe:8030
+      - BE1=10.0.1.155:8040
+      - BE2=10.0.1.215:8040 
+      - BE3=10.0.1.99:8040
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - monitoring-api
