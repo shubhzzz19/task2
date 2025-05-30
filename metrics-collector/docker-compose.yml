@@ -7,10 +7,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - STARROCKS_FE=http://starrocks-fe:8030
-      - BE1=10.0.1.155:8040
-      - BE2=10.0.1.215:8040 
-      - BE3=10.0.1.99:8040
+      - STARROCKS_FE=http://localhost:8030
+      - be_nodes.env
     restart: unless-stopped
 
   grafana:
