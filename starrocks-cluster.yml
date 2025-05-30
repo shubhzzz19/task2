@@ -207,35 +207,25 @@ Resources:
         #!/bin/bash -xe
         echo "Updating system..."
         yum update -y
-        sudo yum install mariadb-server -y
-        sudo yum install mysql -y
+        sudo yum install mariadb-server mysql git -y
         sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
         docker-compose --version
-        echo "Installing Docker..."
         amazon-linux-extras install docker -y
         service docker start
         usermod -aG docker ec2-user
-        echo "Creating directories..."
         mkdir -p /data/fe/meta /data/fe/log
-        echo "Pulling StarRocks FE image..."
         docker pull starrocks/fe-ubuntu:latest
         echo "Starting FE container..."
         docker run -d --name fe -p 8030:8030 -p 9020:9020 -p 9030:9030 -p 9010:9010 -v /data/fe/meta:/opt/starrocks/fe/meta -v /data/fe/log:/opt/starrocks/fe/log --entrypoint "/opt/starrocks/fe/bin/start_fe.sh" starrocks/fe-ubuntu:latest
-        echo "Waiting 10 seconds before fetching BE IPs..."
         sleep 10
         # Fetch BE private IPs into a comma-separated string with :9050 appended to each IP
         BE_IPS=$(aws ec2 describe-instances --region ap-south-1 --filters "Name=tag:Name,Values=StarRocksBE1,StarRocksBE2,StarRocksBE3" "Name=instance-state-name,Values=running" --query 'Reservations[*].Instances[*].PrivateIpAddress' --output text | tr '\t' '\n' | awk '{printf "\"%s:9050\"", $1; if (NR != 0) printf ","}' | sed 's/,$//')
-        echo "Fetched BE IPs: $BE_IPS"
         # Wait for MySQL to be up (optional, add retries if needed)
-        echo "Waiting for MySQL to be ready..."
         sleep 15
         # Run the MySQL command to add backends
         mysql -h 127.0.0.1 -P 9030 -uroot -p"" -e "ALTER SYSTEM ADD BACKEND $BE_IPS;"
-        echo "ALTER SYSTEM command executed."  
         # Clone your GitHub repo of metric-collector
-        cd 
-        yum install -y git
         git clone https://github.com/shubhzzz19/task2.git
         # Change directory to the cloned repo
         cd task2/metrics-collector
