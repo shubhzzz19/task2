@@ -8,5 +8,3 @@ pydantic==1.8.2
 python-dotenv==0.19.0
 pandas==1.3.5  # For percentile calculations
 psutil
-redis
-json
